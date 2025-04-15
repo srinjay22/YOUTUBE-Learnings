@@ -1,0 +1,5 @@
+1. Elements tab : HTML and CSS
+2. Network tab : We can check why the response is taking how much time it is taking by going to the timing tab
+We can also check the headers, preview, response and timings and the cookies stored for that file
+3. Sources tab : We can debug any js file using this tabz we can go to the js file and tap like eclipse on the left of the line and then we can reload the page and once the debugger reaches that point, it will stop there and then we can view all the values and check by stepping into or next line or stepping out.
+We can also do this debugging by manually writting "debbuger;" in the code where we want to debug. But we need to be very MINDFUL of the fact that we need to remove this keyword or whoever has the DEV TOOLS opened in chrome will get stuck at this point if the code is pushed to main branch and merged and is live. 
