@@ -1,0 +1,5 @@
+1. When we search "Calories in apple" vs "Turnover of apple" , it is funny how Google knows that which apple I am talking about whether it is a fruit or the company. It is done by basically Semantic search, that is we don't just search just by the exact match but rather by understanding the search. 
+
+2. We use Vector Database for this reason that we give some kindof points to the search and the croterias based on which we will scheme through while searching for a query and there is a hashing technology which is used which divides the data into buckets and when we search we search in a specific bucket rather than the whole DB and we search for the vector which matches more with the actual query rather than the exact match. 
+
+3. For better reference check this link : https://www.pinecone.io/learn/vector-database/
