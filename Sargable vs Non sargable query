@@ -1,0 +1,308 @@
+SARGable stands for "Search ARGument ABLE."
+A SARGable query is one where the database can efficiently use an index to speed up the search.
+
+A non-SARGable query cannot use an index efficiently and usually results in full table scans (which are much slower).
+
+
+---
+
+Example of SARGable Query:
+
+SELECT * FROM employees WHERE salary > 50000;
+
+Here, if there’s an index on salary, the database can quickly find employees with salary > 50000.
+
+salary is directly compared to a constant (50000).
+
+No functions are applied on the column itself.
+
+
+
+---
+
+Example of Non-SARGable Query:
+
+SELECT * FROM employees WHERE YEAR(joining_date) = 2022;
+
+Here, the function YEAR(joining_date) is applied to the column.
+
+Even if there’s an index on joining_date, it can't be used because the DB must first compute YEAR() for each row and then check.
+
+Result: Full scan of the table.
+
+
+
+---
+
+How to make it SARGable?
+
+Rewrite the query so the column is untouched:
+
+SELECT * FROM employees 
+WHERE joining_date >= '2022-01-01' AND joining_date < '2023-01-01';
+
+Now, no function on joining_date.
+
+The database can directly use the index.
+
+
+
+---
+
+Key points:
+
+
+---
+
+Common mistakes making queries Non-SARGable:
+
+Applying functions: WHERE UPPER(name) = 'JOHN'
+
+Doing calculations: WHERE salary * 12 > 600000
+
+Using OR improperly: WHERE city = 'London' OR salary > 50000 (better to split)
+
+
+
+---
+
+Simple thumb rule:
+
+Keep the column "clean" in your WHERE clause — no functions, no calculations, just pure comparisons.
+
+
+Awesome! Let’s take a real-world example where query optimization made a huge difference.
+
+
+---
+
+Original Non-SARGable Query (bad)
+
+Suppose you have a banking table:
+
+accounts (
+    account_id INT,
+    balance DECIMAL(15,2),
+    last_transaction_date DATE
+)
+
+The team wrote this query:
+
+SELECT account_id
+FROM accounts
+WHERE DATE(last_transaction_date) = '2025-04-01';
+
+Problem:
+
+DATE(last_transaction_date) applies a function to the column.
+
+Even if there’s an index on last_transaction_date, it won't be used.
+
+Full table scan happens (imagine millions of accounts).
+
+
+
+---
+
+Optimized SARGable Query (good)
+
+We rewrote it like this:
+
+SELECT account_id
+FROM accounts
+WHERE last_transaction_date >= '2025-04-01' 
+  AND last_transaction_date < '2025-04-02';
+
+Result:
+
+No function on last_transaction_date.
+
+The database can directly use the index.
+
+The query became 10x faster!
+
+
+
+---
+
+Another Real Example: Text Search
+
+Original non-SARGable query:
+
+SELECT * FROM customers
+WHERE UPPER(customer_name) = 'JOHN SMITH';
+
+Problem:
+
+UPPER() kills index usage.
+
+Even if there’s an index on customer_name, it won’t be used.
+
+
+
+---
+
+Optimized query:
+
+First, store customer names always in uppercase while inserting/updating records.
+Then you can simply write:
+
+SELECT * FROM customers
+WHERE customer_name = 'JOHN SMITH';
+
+Now index on customer_name is fully used.
+
+Fast lookup!
+
+
+Alternative: Use special case-insensitive indexes if supported (like in PostgreSQL or Oracle).
+
+
+---
+
+Quick Mini Summary
+
+
+---
+
+One More Real World Trick: Composite Index
+
+If you often query on two columns together, like:
+
+SELECT * FROM orders WHERE customer_id = 123 AND order_date = '2025-04-01';
+
+Make a composite index on (customer_id, order_date) instead of two separate indexes.
+
+Composite indexes boost such queries dramatically.
+
+Otherwise, DB might still do extra work combining two separate indexes.
+
+
+
+---
+
+Would you like me to also show you how to spot non-SARGable queries easily using EXPLAIN PLAN or SQL Execution Plan?
+(That’s super powerful when debugging slow queries.) Want me to show you that too?
+
+Perfect!
+Let’s dive into how to spot non-SARGable queries easily using EXPLAIN PLAN.
+
+
+---
+
+What is EXPLAIN PLAN?
+
+It's a SQL command that shows how the database will execute your query.
+
+It tells if it’s using an index or doing a full table scan.
+
+If you see "FULL TABLE SCAN" — bad news (likely non-SARGable!).
+
+
+
+---
+
+Basic Usage
+
+For Oracle:
+
+EXPLAIN PLAN FOR 
+SELECT * FROM employees WHERE salary > 50000;
+
+SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
+
+For MySQL:
+
+EXPLAIN 
+SELECT * FROM employees WHERE salary > 50000;
+
+For PostgreSQL:
+
+EXPLAIN ANALYZE 
+SELECT * FROM employees WHERE salary > 50000;
+
+
+---
+
+How to Read the Output
+
+You’ll see a table with columns like:
+
+type: Look here!
+
+ALL = Full Table Scan (bad)
+
+INDEX = Index Scan (good)
+
+RANGE, REF, CONST = Super efficient!
+
+
+key: Name of the index used.
+
+rows: Estimated number of rows DB will process. Lower = better.
+
+
+
+---
+
+Example 1: SARGable Query
+
+EXPLAIN SELECT * FROM employees WHERE salary > 50000;
+
+Output:
+
+type = range → GOOD (uses the index)
+
+key = salary_idx → Index on salary is used.
+
+
+
+---
+
+Example 2: Non-SARGable Query
+
+EXPLAIN SELECT * FROM employees WHERE YEAR(joining_date) = 2022;
+
+Output:
+
+type = ALL → BAD (full scan)
+
+key = NULL → No index is used.
+
+
+=> Means query is non-SARGable.
+
+
+---
+
+Common Signs You Spot in Execution Plans for Non-SARGable Queries
+
+type = ALL
+
+key = NULL
+
+Very high rows value (scanning too many rows)
+
+Extra = Using where but no index used
+
+
+
+---
+
+How to Quickly Fix?
+
+Avoid functions on columns.
+
+Write WHERE conditions that the index can directly use.
+
+Make proper indexes if missing.
+
+Sometimes rewrite queries to ranges (>= and <) instead of functions.
+
+
+
+---
+
+One Last Tip
+
+Some databases (like Oracle, SQL Server) even have query tuning advisors that suggest better indexes or query rewrites based on EXPLAIN PLAN.
